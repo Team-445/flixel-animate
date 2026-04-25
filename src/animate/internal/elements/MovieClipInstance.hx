@@ -20,6 +20,11 @@ import openfl.geom.ColorTransform;
 class MovieClipInstance extends SymbolInstance
 {
 	/**
+	 * DDE only
+	 */
+
+	public static var time:Float = .0;
+	/**
 	 * If to render the movieclip with the rendering method of Swf files.
 	 * When turned off it renders like in the Animate program, with only the first frame getting rendered.
 	 * When turn on it renders like in a Swf player, with all frames getting rendered (and baked).
@@ -239,7 +244,7 @@ class MovieClipInstance extends SymbolInstance
 	 */
 	inline function getMovieClipIndex():Int
 	{
-		return Math.floor((FlxG.game.ticks / 1000) * libraryItem.timeline.parent.frameRate * FlxG.timeScale);
+		return Math.floor(time * libraryItem.timeline.parent.frameRate * FlxG.timeScale);
 	}
 }
 
