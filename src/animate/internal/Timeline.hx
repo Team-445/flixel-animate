@@ -3,14 +3,18 @@ package animate.internal;
 import animate.FlxAnimateJson.TimelineJson;
 import animate.internal.elements.Element;
 import flixel.FlxCamera;
+import flixel.FlxG;
 import flixel.math.FlxMatrix;
 import flixel.math.FlxPoint;
 import flixel.math.FlxRect;
+import flixel.sound.FlxSound;
 import flixel.system.FlxAssets.FlxShader;
 import flixel.util.FlxDestroyUtil;
 import flixel.util.typeLimit.OneOfTwo;
 import openfl.display.BlendMode;
 import openfl.geom.ColorTransform;
+
+using StringTools;
 
 @:access(openfl.geom.Point)
 @:access(openfl.geom.Matrix)
@@ -106,6 +110,7 @@ class Timeline implements IFlxDestroyable
 	/**
 	 * Returns an array of all the elements at the current frame displayed on the timeline.
 	 * May be innacurate if theres more than one ``FlxAnimate`` object playing the same timeline.
+	 * 
 	 * For accuracy of your specific needs, I recommend using ``getElementsAtIndex`` more.
 	 *
 	 * @return An array of all the ``Element`` objects at the current frame.
@@ -113,6 +118,54 @@ class Timeline implements IFlxDestroyable
 	public function getCurrentElements():Array<Element>
 	{
 		return getElementsAtIndex(currentFrame);
+	}
+
+	/**
+	 * Returns the first frame label in the timeline at a specific frame index.
+	 * 
+	 * @param index Frame index ``Int`` to get the element objects from.
+	 * @return		Label ``String`` of the specific frame index, an empty string if not found.
+	 */
+	public function getFrameLabelAtIndex(index:Int):String
+	{
+		for (layer in layers)
+		{
+			var frame = layer.getFrameAtIndex(index);
+			if (frame != null && frame.name.length > 0)
+				return frame.name;
+		}
+		return "";
+	}
+
+	/**
+	 * Gets the list of indices of a frame label to be found from a timeline.
+	 *
+	 * @param label Frame label tag to find the indices of.
+	 * @return Array of ``Int`` indices of the frame label, empty if none were found.
+	 */
+	public function findFrameLabelIndices(label:String):Array<Int>
+	{
+		var foundFrames:Array<Int> = [];
+		var hasFoundLabel:Bool = false;
+
+		for (layer in layers)
+		{
+			for (frame in layer.frames)
+			{
+				if (frame.name.rtrim() == label)
+				{
+					hasFoundLabel = true;
+
+					for (i in 0...frame.duration)
+						foundFrames.push(frame.index + i);
+				}
+			}
+
+			if (hasFoundLabel)
+				break;
+		}
+
+		return foundFrames;
 	}
 
 	/**
@@ -267,44 +320,12 @@ class Timeline implements IFlxDestroyable
 	{
 		for (layer in layers)
 		{
-			var frame = layer.getFrameAtIndex(frameIndex);
+			final frame:Null<Frame> = layer.getFrameAtIndex(frameIndex);
 			if (frame != null)
-			{
-				var isKeyFrame:Bool = (frame.index == frameIndex);
-				if (isKeyFrame)
-				{
-					if (frame.sound != null)
-						frame.sound.play(true);
-
-					if (frame.name.length > 0)
-						animation.onFrameLabel.dispatch(frame.name);
-				}
-			}
+				frame.signalFrameChange(frameIndex, animation);
 		}
 	}
 
-	/*public function setDirty(symbol:String)
-		{
-			for (layer in layers)
-			{
-				for (frame in layer)
-				{
-					for (element in frame)
-					{
-						switch (element.elementType)
-						{
-							case GRAPHIC | MOVIECLIP | BUTTON:
-								var libraryItem = element.toSymbolInstance().libraryItem.name;
-								if (libraryItem != symbol)
-								{
-									element.parentFrame.setDirty();
-								}
-							default:
-						}
-					}
-				}
-			}
-	}*/
 	public function draw(camera:FlxCamera, parentMatrix:FlxMatrix, ?transform:ColorTransform, ?blend:BlendMode, ?antialiasing:Bool, ?shader:FlxShader)
 	{
 		var i = layers.length - 1;

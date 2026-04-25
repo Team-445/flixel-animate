@@ -1,8 +1,11 @@
 package animate;
 
 import animate.FlxAnimateJson;
+import animate.internal.Frame;
+import animate.internal.Layer;
 import animate.internal.SymbolItem;
 import animate.internal.Timeline;
+import animate.internal.elements.AtlasInstance;
 import animate.internal.elements.SymbolInstance;
 import flixel.FlxG;
 import flixel.graphics.FlxGraphic;
@@ -109,10 +112,21 @@ class FlxAnimateFrames extends FlxAtlasFrames
 	 * @param name Name of the symbol item to return.
 	 * @return ``SymbolItem`` found with the given name, null if not found.
 	 */
-	public function getSymbol(name:String):Null<SymbolItem>
+	public function getSymbol(name:String, ?atlasInstance:AtlasInstanceJson):Null<SymbolItem>
 	{
-		if (existsSymbol(name))
+		if (dictionary.exists(name))
+		{
 			return dictionary.get(name);
+		}
+		else
+		{
+			if (name.contains("/")) // Look for the shortcut name if the symbol is contained in a folder
+			{
+				final shortcut:String = name.split("/").pop();
+				if (dictionary.exists(shortcut))
+					return dictionary.get(shortcut);
+			}
+		}
 
 		if (_isInlined)
 		{
@@ -125,9 +139,7 @@ class FlxAnimateFrames extends FlxAtlasFrames
 					if (data.SN == name)
 					{
 						var timeline = new Timeline(data.TL, this, name);
-						var symbol = new SymbolItem(timeline);
-						dictionary.set(timeline.name, symbol);
-						return symbol;
+						return setSymbol(null, new SymbolItem(timeline));
 					}
 				}
 			}
@@ -138,9 +150,7 @@ class FlxAnimateFrames extends FlxAtlasFrames
 			{
 				var data:TimelineJson = Json.parse(getTextFromPath(path + "/LIBRARY/" + name + ".json"));
 				var timeline = new Timeline(data, this, name);
-				var symbol = new SymbolItem(timeline);
-				dictionary.set(timeline.name, symbol);
-				return symbol;
+				return setSymbol(null, new SymbolItem(timeline));
 			}
 		}
 
@@ -150,7 +160,26 @@ class FlxAnimateFrames extends FlxAtlasFrames
 				return collection.dictionary.get(name);
 		}
 
-		FlxG.log.warn('SymbolItem with name "$name" doesnt exist.');
+		// Legacy check for Animate 2018 Texture Atlas
+		if (atlasInstance != null)
+		{
+			var timeline = new Timeline(null, this, name);
+			var layer = new Layer(timeline);
+			var frame = new Frame(layer);
+			frame.elements.push(new AtlasInstance(atlasInstance, this, frame));
+
+			layer.frames.push(frame);
+			@:privateAccess layer.frameIndices.push(0);
+			timeline.layers.push(layer);
+			timeline.frameCount = 1;
+
+			@:privateAccess
+			timeline._bounds = timeline.getWholeBounds(false, timeline._bounds);
+
+			return setSymbol(name, new SymbolItem(timeline));
+		}
+
+		FlxG.log.warn("SymbolItem with name " + '"$name"' + " doesn't exist.");
 		return null;
 	}
 
@@ -162,17 +191,31 @@ class FlxAnimateFrames extends FlxAtlasFrames
 	 */
 	public function existsSymbol(name:String):Bool
 	{
-		return (dictionary.exists(name));
+		final existsBasic:Bool = dictionary.exists(name);
+		if (existsBasic)
+			return true;
+
+		if (name.contains("/")) // Look for the shortcut name if the symbol is contained in a folder
+		{
+			final shortcut:String = name.split("/").pop();
+			return dictionary.exists(shortcut);
+		}
+
+		return false;
 	}
 
 	/**
 	 * Adds a ``SymbolItem`` object to the texture atlas dictionary/library.
 	 *
-	 * @param name Name of the symbol item to add.
+	 * @param name 			Name of the symbol item to add, uses the timeline name if null.
+	 * @param symbolItem 	``SymbolItem`` object to add.
+	 * @return ``SymbolItem`` object that has been added, for chaining.
 	 */
-	public function setSymbol(name:String, symbolItem:SymbolItem):Void
+	public function setSymbol(?name:String, symbolItem:SymbolItem):SymbolItem
 	{
-		dictionary.set(name, symbolItem);
+		final id:String = name ?? symbolItem.timeline.name;
+		dictionary.set(id, symbolItem);
+		return symbolItem;
 	}
 
 	/**

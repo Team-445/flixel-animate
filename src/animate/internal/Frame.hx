@@ -17,6 +17,7 @@ import flixel.util.FlxDestroyUtil;
 import openfl.display.BlendMode;
 import openfl.geom.ColorTransform;
 import openfl.media.Sound;
+import openfl.utils.Assets;
 
 using StringTools;
 
@@ -35,7 +36,12 @@ class Frame implements IFlxDestroyable
 	public var index:Int;
 	public var duration:Int;
 	public var name:String;
+
 	public var sound:Null<FlxSound>;
+	public var soundSync:String; // "event", "play", "stop", "stream"
+
+	var _soundData:Null<Sound>;
+
 	public var blend:BlendMode;
 
 	public function new(?layer:Layer)
@@ -116,12 +122,12 @@ class Frame implements IFlxDestroyable
 	{
 		var elements = this.elements.splice(fromIndex, toIndex - fromIndex);
 
-		var frame = new Frame();
-		for (element in elements)
-			frame.add(element);
-
 		var timeline = new animate.internal.Timeline(null, layer.timeline.parent, "tempSymbol");
 		var layer = new Layer(timeline);
+
+		var frame = new Frame(layer);
+		for (element in elements)
+			frame.add(element);
 
 		layer.frames.push(frame);
 		layer.frameIndices.push(0);
@@ -245,23 +251,32 @@ class Frame implements IFlxDestroyable
 			}
 		}
 
-		if (frame.SND != null)
+		#if FLX_SOUND_SYSTEM
+		var snd = frame.SND;
+		if (snd != null)
 		{
-			final soundPath:String = parent.path + '/LIBRARY/' + frame.SND.N;
+			soundSync = snd.SNC;
 
-			#if (cpp || hl) // Default sound loading has issues with WAV files on native for some reason
-			if (soundPath.endsWith(".wav"))
+			final soundPath:String = parent.path + '/LIBRARY/' + snd.N;
+			if (FlxAnimateAssets.exists(soundPath, SOUND))
 			{
-				var bytes = FlxAnimateAssets.getBytes(soundPath);
-				var buffer = lime.media.AudioBuffer.fromBytes(bytes);
-				var openflSound = Sound.fromAudioBuffer(buffer);
-				sound = FlxG.sound.load(openflSound);
-				return;
+				#if (cpp || hl) // Default sound loading has issues with WAV files on native for some reason
+				if (soundPath.endsWith(".wav"))
+				{
+					var bytes = FlxAnimateAssets.getBytes(soundPath);
+					var buffer = lime.media.AudioBuffer.fromBytes(bytes);
+					_soundData = Sound.fromAudioBuffer(buffer);
+					sound = FlxG.sound.load(_soundData);
+				}
+				else
+				#end
+				{
+					_soundData = Assets.getSound(soundPath);
+					sound = FlxG.sound.load(_soundData);
+				}
 			}
-			#end
-
-			sound = FlxG.sound.load(soundPath);
 		}
+		#end
 	}
 
 	@:allow(animate.internal.Layer)
@@ -324,6 +339,48 @@ class Frame implements IFlxDestroyable
 			_dirty = false;
 	}
 
+	@:allow(animate.internal.Timeline)
+	private function signalFrameChange(frameIndex:Int, animation:FlxAnimateController):Void
+	{
+		final isKeyFrame:Bool = (index == frameIndex);
+
+		if (isKeyFrame)
+		{
+			if (name.length > 0)
+				animation.onFrameLabel.dispatch(name);
+		}
+
+		#if FLX_SOUND_SYSTEM
+		if (sound != null)
+		{
+			// if (animation.curAnim != null && animation.curAnim.paused) {
+			// pause the sound too maybe?
+			// }
+
+			switch (soundSync)
+			{
+				case "event":
+					if (isKeyFrame)
+						FlxG.sound.play(_soundData);
+
+				case "stop":
+					sound.stop();
+				case "start":
+					if (isKeyFrame)
+						sound.play(true);
+				case "stream":
+					if (isKeyFrame)
+						sound.play(true);
+
+					var streamTime = (frameIndex - index) * (1 / animation.curAnim.frameRate) * 1000;
+					var streamDiff = Math.abs(streamTime - sound.time);
+					if (streamDiff >= 50)
+						sound.time = streamTime;
+			}
+		}
+		#end
+	}
+
 	@:allow(animate.internal.elements.SymbolInstance)
 	@:allow(animate.internal.FilterRenderer)
 	@:allow(animate.internal.filters.Blend)
@@ -370,6 +427,7 @@ class Frame implements IFlxDestroyable
 	{
 		elements = FlxDestroyUtil.destroyArray(elements);
 		sound = FlxDestroyUtil.destroy(sound);
+		_soundData = null;
 		layer = null;
 
 		if (_bakedFrames != null)
