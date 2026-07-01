@@ -1,14 +1,16 @@
 {
-    "name": "flixel-animate",
-    "url": "https://github.com/MaybeMaru/flixel-animate",
-    "license": "MIT",
-    "tags": ["flixel", "adobe"],
-    "description": "Personal HaxeFlixel Adobe Animate texture atlas implementation.",
-    "classPath": "src/",
-    "version": "1.5.0",
-    "releasenote": "Improved matrix customization, compatibility with older HaxeFlixel, extra utility and bugfixes.",
-    "contributors": ["MaybeMaru"],
-	"dependencies": {
-		"flixel": ""
-	}
+  "name": "flixel-animate",
+  "url": "https://github.com/MaybeMaru/flixel-animate",
+  "license": "MIT",
+  "tags": ["flixel", "adobe"],
+  "description": "Personal HaxeFlixel Adobe Animate texture atlas implementation.",
+  "classPath": "src/",
+  "version": "1.5.0",
+  "releasenote": "Improved matrix customization, compatibility with older HaxeFlixel, extra utility and bugfixes.",
+  "contributors": ["MaybeMaru"],
+  "dependencies": {
+    "flixel": "",
+    "format": "",
+    "hxGeomAlgo": ""
+  }
 }

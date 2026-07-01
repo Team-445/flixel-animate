@@ -18,6 +18,9 @@ class AnimateElement<T> implements IFlxDestroyable
 	public var visible:Bool;
 	public var elementType(default, null):ElementType;
 	public var parentFrame:Frame;
+	public var parent:FlxAnimateFrames;
+	public var transform:ColorTransform;
+	var _transform:ColorTransform;
 
 	var _mat:FlxMatrix;
 
@@ -25,6 +28,7 @@ class AnimateElement<T> implements IFlxDestroyable
 	{
 		_mat = new FlxMatrix();
 		parentFrame = frame;
+		this.parent = parent;
 		visible = true;
 	}
 

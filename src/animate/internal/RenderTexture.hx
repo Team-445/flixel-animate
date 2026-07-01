@@ -70,10 +70,10 @@ class RenderTexture implements IFlxDestroyable
 	 * Initializes the render texture internal data to be used for rendering.
 	 * This function **MUST** be called before using ``RenderTexture.render`` if you plan on dynamically
 	 * changing the size of the texture from it's initial resolution.
-	 * 
+	 *
 	 * @param width New width of the texture.
 	 * @param height New height of the texture.
-	 * 
+	 *
 	 */
 	public function init(width:Int, height:Int):Void
 	{
@@ -95,9 +95,9 @@ class RenderTexture implements IFlxDestroyable
 	/**
 	 * Provides a way to add custom draw contents onto the internal camera of the texture.
 	 * Used a custom callback which supplies the ``FlxCamera`` to render to and a usable helper identity ``FlxMatrix``.
-	 * 
+	 *
 	 * @param drawCallback Custom callback with the internal ``FlxCamera`` and helper ``FlxMatrix``.
-	 * 
+	 *
 	 */
 	public function drawToCamera(drawCallback:FlxCamera->FlxMatrix->Void):Void
 	{

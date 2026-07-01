@@ -71,7 +71,7 @@ class FlxAnimate extends FlxSprite
 	/**
 	 * Whether to apply the stage matrix of the Texture Atlas.
 	 * It also makes the sprite render with the bounds from Animate.
-	 * 
+	 *
 	 * Take note that these bounds may not be accurate to flixel positions.
 	 */
 	public var applyStageMatrix(default, set):Bool = false;
@@ -79,10 +79,10 @@ class FlxAnimate extends FlxSprite
 	/**
 	 * Wether to apply the stage matrix of the Texture Atlas before or after FlxSprite calculations.
 	 * Changes the behaviour of a sprite in relation to the position, scale and rotation of the matrix.
-	 * 
+	 *
 	 * When set to ``false`` the stage matrix will apply before other FlxSprite matrix calculations,
 	 * as if the symbol was contained inside of the sprite.
-	 * 
+	 *
 	 * When set to ``true`` the stage matrix will apply after FlxSprite matrix calculations,
 	 * as if the sprite was contained inside of the symbol.
 	 */
@@ -121,16 +121,22 @@ class FlxAnimate extends FlxSprite
 	public function new(?x:Float = 0, ?y:Float = 0, ?simpleGraphic:FlxGraphicAsset, ?settings:FlxAnimateSettings)
 	{
 		var loadedAnimateAtlas:Bool = false;
+		var loadedSWF:Bool = false;
+
 		if (simpleGraphic != null && simpleGraphic is String)
 		{
-			if (Path.extension(simpleGraphic).length == 0)
+			if (Path.extension(simpleGraphic).toLowerCase() == "swf")
+				loadedSWF = true;
+			else if (Path.extension(simpleGraphic).length == 0)
 				loadedAnimateAtlas = true;
 		}
 
-		super(x, y, loadedAnimateAtlas ? null : simpleGraphic);
+		super(x, y, (loadedAnimateAtlas || loadedSWF) ? null : simpleGraphic);
 
 		if (loadedAnimateAtlas)
 			frames = FlxAnimateFrames.fromAnimate(simpleGraphic, null, null, null, false, settings);
+		else if (loadedSWF)
+			frames = FlxAnimateFrames.fromSWF(simpleGraphic, false, settings);
 	}
 
 	override function initVars()
@@ -484,14 +490,15 @@ class FlxAnimate extends FlxSprite
 
 	override function destroy():Void
 	{
-		super.destroy();
 		#if !flash
 		_renderTexture = FlxDestroyUtil.destroy(_renderTexture);
 		#end
 		anim = FlxDestroyUtil.destroy(anim);
-		library = null;
-		timeline = null;
+		library = FlxDestroyUtil.destroy(library);
+		timeline = FlxDestroyUtil.destroy(timeline);
 		stageBg = FlxDestroyUtil.destroy(stageBg);
 		skew = FlxDestroyUtil.put(skew);
+
+		super.destroy();
 	}
 }
