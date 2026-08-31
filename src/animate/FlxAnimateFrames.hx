@@ -622,18 +622,6 @@ class FlxAnimateSpritemapCollection extends FlxGraphic
 			spritemaps.push(graphic);
 	}
 
-	override function checkUseCount():Void
-	{
-		if (useCount <= 0 && destroyOnNoUse && !persist)
-		{
-			for (spritemap in spritemaps)
-				FlxG.bitmap.remove(spritemap);
-
-			spritemaps.resize(0);
-			parentFrames = FlxDestroyUtil.destroy(parentFrames);
-		}
-	}
-
 	override function destroy():Void
 	{
 		bitmap = null; // Turning null early to let the og spritemap graphic remove the bitmap
