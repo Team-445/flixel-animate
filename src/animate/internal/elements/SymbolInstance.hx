@@ -13,7 +13,6 @@ import flixel.util.FlxColor;
 import flixel.util.FlxDestroyUtil;
 import openfl.display.BlendMode;
 import openfl.geom.ColorTransform;
-
 using flixel.util.FlxColorTransformUtil;
 
 class SymbolInstance extends AnimateElement<SymbolInstanceJson>
@@ -246,6 +245,11 @@ class SymbolInstance extends AnimateElement<SymbolInstanceJson>
 	inline function get_symbolName():String
 	{
 		return libraryItem?.name;
+	}
+
+	override function get_antialiasing():Null<Bool>
+	{
+		return libraryItem?.antialiasing;
 	}
 
 	override function destroy()

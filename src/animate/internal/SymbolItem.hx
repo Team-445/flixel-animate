@@ -13,6 +13,7 @@ class SymbolItem implements IFlxDestroyable
 {
 	public var name:String;
 	public var timeline:Timeline;
+	public var antialiasing:Null<Bool>;
 
 	public function new(timeline:Timeline)
 	{
