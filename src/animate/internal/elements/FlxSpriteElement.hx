@@ -18,7 +18,6 @@ using flixel.util.FlxColorTransformUtil;
 class FlxSpriteElement extends FlxTypedElement<FlxSprite>
 {
 	var _hasTransform:Bool;
-	var _transform:ColorTransform;
 	var _point:FlxPoint;
 	var _screenPoint:FlxPoint;
 	var _angle:Float;

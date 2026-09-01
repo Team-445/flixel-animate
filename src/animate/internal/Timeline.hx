@@ -70,7 +70,7 @@ class Timeline implements IFlxDestroyable
 
 	/**
 	 * Returns the frames through all the layers of a timeline at a specific frame index.
-	 * 
+	 *
 	 * @param index Frame index ``Int`` to get the frames objects from.
 	 * @return		An array of all the ``Frame`` objects at a specific frame index.
 	 */
@@ -88,7 +88,7 @@ class Timeline implements IFlxDestroyable
 
 	/**
 	 * Returns the elements through all the layers of a timeline at a specific frame index.
-	 * 
+	 *
 	 * @param index Frame index ``Int`` to get the element objects from.
 	 * @return		An array of all the ``Element`` objects at a specific frame index.
 	 */
@@ -110,7 +110,7 @@ class Timeline implements IFlxDestroyable
 	/**
 	 * Returns an array of all the elements at the current frame displayed on the timeline.
 	 * May be innacurate if theres more than one ``FlxAnimate`` object playing the same timeline.
-	 * 
+	 *
 	 * For accuracy of your specific needs, I recommend using ``getElementsAtIndex`` more.
 	 *
 	 * @return An array of all the ``Element`` objects at the current frame.
@@ -122,7 +122,7 @@ class Timeline implements IFlxDestroyable
 
 	/**
 	 * Returns the first frame label in the timeline at a specific frame index.
-	 * 
+	 *
 	 * @param index Frame index ``Int`` to get the element objects from.
 	 * @return		Label ``String`` of the specific frame index, an empty string if not found.
 	 */
@@ -352,7 +352,7 @@ class Timeline implements IFlxDestroyable
 			var layer = new Layer(this);
 			layer.name = layerJson.LN;
 			layers.push(layer);
-			_layerMap.set(layer.name, layer);
+			_layerMap.set(layer?.name ?? '', layer);
 		}
 
 		for (i in 0...layersJson.length)

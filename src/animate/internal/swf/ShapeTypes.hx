@@ -1,0 +1,137 @@
+package animate.internal.swf;
+
+import openfl.Vector;
+import flixel.math.FlxRect;
+import flixel.math.FlxMatrix;
+import flixel.util.FlxDestroyUtil;
+
+typedef MeshData =
+{
+  verts:Vector<Float>,
+  indices:Vector<Int>,
+  color:Int
+}
+
+class Fill
+{
+  public var color:Int;
+  public var vertices:Array<Float>;
+  public var indices:Array<Int>;
+
+  var _mesh:MeshData;
+
+  public function new(color:Int, vertices:Array<Float>, indices:Array<Int>)
+  {
+    this.color = color;
+    this.vertices = vertices;
+    this.indices = indices;
+  }
+
+  public function getMesh():Null<MeshData>
+  {
+    if (_mesh == null) _mesh = buildMesh();
+
+    return _mesh;
+  }
+
+  inline function buildMesh():MeshData
+  {
+    // using openfl vectors, yes i know.....cardinal sin am i right?
+    // we're kind of forced to use them since flixel and openfl suck ass
+    var verts:Vector<Float> = new Vector<Float>(vertices.length);
+    for (i in 0...vertices.length) verts[i] = vertices[i] / 20.0;
+
+    var idx:Vector<Int> = new Vector<Int>(indices.length);
+    for (i in 0...indices.length) idx[i] = indices[i];
+
+    return {
+      verts: verts,
+      indices: idx,
+      color: color
+    };
+  }
+
+  public function destroy():Void
+  {
+    vertices = null;
+    indices = null;
+    _mesh = null;
+  }
+}
+
+class Stroke extends Fill
+{
+  public var widthTwips:Float;
+
+  public function new(color:Int, widthTwips:Float, vertices:Array<Float>, indices:Array<Int>)
+  {
+    super(color, vertices, indices);
+    this.widthTwips = widthTwips;
+  }
+}
+
+class Shape
+{
+  public var characterId:Int;
+  public var bounds:FlxRect;
+  public var fills:Array<Fill>;
+  public var strokes:Array<Stroke>;
+  public var bitmapId:Null<Int> = null;
+  public var bitmapMatrix:Null<FlxMatrix> = null;
+
+  var _meshes:Array<MeshData>;
+
+  public function new(characterId:Int, bounds:FlxRect)
+  {
+    this.characterId = characterId;
+    this.bounds = bounds;
+    this.fills = [];
+    this.strokes = [];
+  }
+
+  public function getMeshes():Array<MeshData>
+  {
+    if (_meshes == null)
+    {
+      _meshes = [];
+
+      if (fills != null)
+      {
+        for (fill in fills)
+        {
+          var mesh:Null<MeshData> = fill.getMesh();
+          if (mesh != null) _meshes.push(mesh);
+        }
+      }
+
+      if (strokes != null)
+      {
+        for (stroke in strokes)
+        {
+          var mesh:Null<MeshData> = stroke.getMesh();
+          if (mesh != null) _meshes.push(mesh);
+        }
+      }
+    }
+
+    return _meshes;
+  }
+
+  public function destroy():Void
+  {
+    if (fills != null)
+    {
+      for (fill in fills) fill.destroy();
+    }
+
+    if (strokes != null)
+    {
+      for (stroke in strokes) stroke.destroy();
+    }
+
+    fills = null;
+    strokes = null;
+    bounds = FlxDestroyUtil.put(bounds);
+    _meshes = null;
+  }
+}

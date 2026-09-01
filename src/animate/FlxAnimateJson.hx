@@ -9,8 +9,10 @@ import openfl.display.BlendMode;
 import openfl.filters.BitmapFilter;
 import openfl.filters.BitmapFilterType;
 import openfl.filters.BlurFilter;
+import openfl.filters.ColorMatrixFilter;
 import openfl.filters.DropShadowFilter;
 import openfl.filters.GlowFilter;
+import openfl.geom.ColorTransform;
 
 using StringTools;
 
@@ -281,6 +283,7 @@ abstract FilterJson(Dynamic)
 	public var HO(get, never):Null<Bool>;
 	public var C(get, never):String;
 	public var GE(get, never):Array<GradientEntry>;
+	public var MX(get, never):Null<Array<Float>>;
 
 	extern inline function get_N()
 		return this.N ?? this.name;
@@ -348,6 +351,9 @@ abstract FilterJson(Dynamic)
 	extern inline function get_GE()
 		return this.GE ?? this.GradientEntries;
 
+	extern inline function get_MX()
+		return this.MX ?? this.matrix;
+
 	function getGradientArray():{colors:Array<Int>, alphas:Array<Float>, ratios:Array<Float>}
 	{
 		var colors:Array<Int> = [];
@@ -389,7 +395,15 @@ abstract FilterJson(Dynamic)
 
 			case "adjustColorFilter" | "ACF":
 				var acf = new AdjustColorFilter();
-				acf.set(BRT, H, CT, SAT);
+				if (MX != null)
+				{
+					acf.filter.matrix = MX;
+				}
+				else
+				{
+					acf.set(BRT, H, CT, SAT);
+				}
+
 				return acf.filter;
 
 			case "dropShadowFilter" | "DSF":
@@ -480,11 +494,17 @@ extern abstract AtlasInstanceJson(Dynamic)
 	public var N(get, never):String;
 	public var MX(get, never):MatrixJson;
 
+	// NOTE: This is only used for SWF instances!!
+	public var C(get, never):Null<ColorJson>;
+
 	inline function get_N()
 		return this.N ?? this.name;
 
 	inline function get_MX()
 		return MatrixJson.resolve(this);
+
+	inline function get_C()
+		return this.C ?? this.color;
 }
 
 extern abstract TextFieldInstanceJson(Dynamic)
@@ -698,6 +718,32 @@ extern abstract ColorJson(Dynamic)
 
 	inline function get_BRT()
 		return this.BRT ?? this.brightness;
+
+	extern public inline function toColorTransform():Null<ColorTransform>
+	{
+		return switch (M)
+		{
+			case "AD" | "Advanced":
+				new ColorTransform(RM, GM, BM, AM, RO, GO, BO, AO);
+
+			case "CA" | "Alpha":
+				new ColorTransform(1.0, 1.0, 1.0, AM, 0.0, 0.0, 0.0, 0.0);
+
+			case "CBRT" | "Brightness":
+				var colorMult:Float = 1.0 - Math.abs(BRT);
+				var colorOffset:Float = BRT >= 0.0 ? BRT * 255.0 : 0.0;
+				new ColorTransform(colorMult, colorMult, colorMult, 1.0, colorOffset, colorOffset, colorOffset, 0.0);
+
+			case "T" | "Tint":
+				var tint:FlxColor = FlxColor.fromString(TC);
+				var tintMult:Float = TM;
+				var mult:Float = 1.0 - tintMult;
+				new ColorTransform(mult, mult, mult, 1.0, tint.red * tintMult, tint.green * tintMult, tint.blue * tintMult, 0.0);
+
+			default:
+				null;
+		}
+	}
 }
 
 extern typedef PointJson =

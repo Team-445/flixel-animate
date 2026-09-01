@@ -6,11 +6,13 @@ import animate.internal.Layer;
 import animate.internal.SymbolItem;
 import animate.internal.Timeline;
 import animate.internal.elements.AtlasInstance;
-import animate.internal.elements.SymbolInstance;
+import animate.internal.swf.Document;
+import animate.internal.swf.ShapeTypes.Shape;
+import animate.internal.swf.JsonBuilder;
 import flixel.FlxG;
 import flixel.graphics.FlxGraphic;
 import flixel.graphics.frames.FlxAtlasFrames;
-import flixel.graphics.frames.FlxFramesCollection.FlxFrameCollectionType;
+import flixel.graphics.frames.FlxFrame;
 import flixel.math.FlxMatrix;
 import flixel.math.FlxPoint;
 import flixel.math.FlxRect;
@@ -20,6 +22,8 @@ import flixel.util.FlxDestroyUtil;
 import haxe.Json;
 import haxe.ds.Vector;
 import haxe.io.Path;
+import openfl.display.BitmapData;
+import openfl.utils.ByteArray;
 
 using StringTools;
 
@@ -104,6 +108,7 @@ class FlxAnimateFrames extends FlxAtlasFrames
 		super(graphic);
 		this.dictionary = [];
 		this.addedCollections = [];
+		this._libraryList = [];
 	}
 
 	/**
@@ -204,6 +209,18 @@ class FlxAnimateFrames extends FlxAtlasFrames
 		return false;
 	}
 
+	var _shapes:Map<String, Shape> = [];
+
+	/**
+	 * Gets an `Shape` object by its name.
+	 * @param name The name of the shape to get.
+	 * @return The `Shape` object, or null if it doesn't exist.
+	 */
+	public function getShapeByName(name:String):Null<Shape>
+	{
+		return _shapes.get(name);
+	}
+
 	/**
 	 * Adds a ``SymbolItem`` object to the texture atlas dictionary/library.
 	 *
@@ -265,6 +282,15 @@ class FlxAnimateFrames extends FlxAtlasFrames
 				}
 			}
 
+			// I noticed sometimes the timeline layers or bounds get nullified
+			// This check didn't help but i believe it's good to have it still here for safety
+			// -Karim
+			@:privateAccess
+			if (!isAtlasDestroyed && (cachedAtlas.timeline.layers == null || cachedAtlas.timeline.layers.length <= 0 || cachedAtlas.timeline._bounds == null))
+			{
+				isAtlasDestroyed = true;
+			}
+
 			// Destroy previously cached atlas if incomplete, and create a new instance
 			if (isAtlasDestroyed)
 			{
@@ -284,9 +310,33 @@ class FlxAnimateFrames extends FlxAtlasFrames
 		return _fromAnimateInput(animate, spritemaps, metadata, key, settings);
 	}
 
-	static function getTextFromPath(path:String):String
+	/**
+	 * Parsing method for Adobe Flash SWF files.
+	 *
+	 * @param   path    The SWF file path.
+	 * @param   unique  Optional, ensures that the atlas uses a new slot in the cache.
+	 */
+	public static function fromSWF(path:String, unique:Bool = false, ?settings:FlxAnimateSettings):FlxAnimateFrames
 	{
-		return FlxAnimateAssets.getText(path).replace(String.fromCharCode(0xFEFF), "");
+		if (!unique && _cachedAtlases.exists(path))
+			return _cachedAtlases.get(path);
+
+		var bytes:ByteArray = FlxAnimateAssets.getBytes(path);
+		if (bytes == null)
+		{
+			FlxG.log.error('Failed to load SWF file at "$path," does the file exist?');
+			return null;
+		}
+
+		return _fromSWFBytes(bytes, path, settings);
+	}
+
+	static function getTextFromPath(path:String):Null<String>
+	{
+		// getText() returns null if the asset could not be fetched.
+		var text:Null<String> = FlxAnimateAssets.getText(path);
+		if (text == null) return null;
+		return text.replace(String.fromCharCode(0xFEFF), "");
 	}
 
 	static function listWithFilter(path:String, filter:String->Bool, includeSubDirectories:Bool = false)
@@ -295,12 +345,14 @@ class FlxAnimateFrames extends FlxAtlasFrames
 		return list.filter(filter);
 	}
 
-	static function getGraphic(path:String):FlxGraphic
+	static function getGraphic(path:String, ?key:String):FlxGraphic
 	{
-		if (FlxG.bitmap.checkCache(path))
-			return FlxG.bitmap.get(path);
+		if (key == null) key = path;
 
-		return FlxG.bitmap.add(FlxAnimateAssets.getBitmapData(path), false, path);
+		if (FlxG.bitmap.checkCache(key))
+			return FlxG.bitmap.get(key);
+
+		return FlxG.bitmap.add(FlxAnimateAssets.getBitmapData(path), false, key);
 	}
 
 	var _symbolDictionary:Null< #if flash Array<SymbolJson> #else Vector<SymbolJson> #end>;
@@ -440,6 +492,60 @@ class FlxAnimateFrames extends FlxAtlasFrames
 		return frames;
 	}
 
+	static function _fromSWFBytes(bytes:ByteArray, ?key:String, settings:FlxAnimateSettings):FlxAnimateFrames
+	{
+		var doc:Document = Document.build(bytes);
+
+		// swf files don't use graphics! (for the most part)
+		// we just give `FlxAnimateFrames` a placeholder graphic so that it's happy
+		var _placeholderGraphic:FlxGraphic = FlxGraphic.fromBitmapData(new BitmapData(1, 1, true, 0xFFFFFFFF), false, "__swf_placeholder_graphic__", false);
+		_placeholderGraphic.persist = true;
+
+		var frames = new FlxAnimateFrames(_placeholderGraphic);
+		frames.path = key ?? "__swf__";
+
+		for (shape in doc.shapes)
+			frames._shapes.set('swf_shape_${shape.characterId}', shape);
+
+		for (id => bmp in doc.bitmaps)
+		{
+			var graphic:FlxGraphic = FlxG.bitmap.add(bmp, true, 'swf_bitmap_$id');
+			graphic.imageFrame.frame.name = 'swf_bitmap_$id';
+			graphic.persist = true;
+
+			frames.pushFrame(graphic.imageFrame.frame);
+		}
+
+		// build a fake Timeline for the SWF file
+		// we're... larping as a texture atlas...? *gulp*
+		var allTimelines:Map<String, TimelineJson> = JsonBuilder.build(doc);
+
+		var symbolList:Array<Dynamic> = [];
+		for (name => timelineJson in allTimelines)
+		{
+			if (name == "__root__")
+				continue;
+			symbolList.push({SN: name, TL: timelineJson});
+		}
+
+		frames._isInlined = true;
+		frames._symbolDictionary = Vector.fromArrayCopy(symbolList);
+		frames._settings = settings;
+
+		frames.timeline = new Timeline(allTimelines.get("__root__"), frames, "__root__");
+		frames.dictionary.set("__root__", new SymbolItem(frames.timeline));
+
+		frames.frameRate = doc.frameRate;
+		frames.stageRect = FlxRect.get(0, 0, doc.stageBounds.width, doc.stageBounds.height);
+		doc.stageBounds = FlxDestroyUtil.put(doc.stageBounds);
+		frames.matrix = new FlxMatrix();
+
+		if (key != null)
+			_cachedAtlases.set(key, frames);
+
+		return frames;
+	}
+
 	@:allow(animate.FlxAnimateController)
 	var dictionary:Map<String, SymbolItem>;
 
@@ -479,7 +585,7 @@ class FlxAnimateFrames extends FlxAtlasFrames
 	 * Combines two ``FlxAtlasFrames`` into one.
 	 * Recommended to use over manually calling ``frames.addAtlas`` when working with
 	 * ``FlxAnimateFrames`` and other mixed frame types, due to some special merge order conditions it requires.
-	 * 
+	 *
 	 * @param atlasA First atlas to combine.
 	 * @param atlasB Second atlas to combine.
 	 * @return Newly merged ``FlxAtlasFrames`` object.
@@ -493,7 +599,7 @@ class FlxAnimateFrames extends FlxAtlasFrames
 	 * Combines a list of ``FlxAtlasFrames`` into one.
 	 * Recommended to use over manually calling ``frames.addAtlas`` when working with
 	 * ``FlxAnimateFrames`` and other mixed frame types, due to some special merge order conditions it requires.
-	 * 
+	 *
 	 * @param atlasList List of atlas frames to combine.
 	 * @return Newly merged ``FlxAtlasFrames`` object.
 	 */
@@ -592,6 +698,13 @@ class FlxAnimateFrames extends FlxAtlasFrames
 		checkedDirtySymbols = null;
 		dictionary = null;
 		matrix = null;
+
+		if (_shapes != null)
+		{
+			for (shape in _shapes)
+				shape.destroy();
+		}
+		_shapes = null;
 	}
 }
 
