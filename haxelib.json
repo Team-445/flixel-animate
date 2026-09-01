@@ -11,6 +11,6 @@
   "dependencies": {
     "flixel": "",
     "format": "",
-    "hxGeomAlgo": ""
+    "hx-geom-algo": ""
   }
 }
