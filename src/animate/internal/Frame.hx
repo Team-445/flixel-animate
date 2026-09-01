@@ -419,7 +419,7 @@ class Frame implements IFlxDestroyable
 		for (element in elements)
 		{
 			if (element.visible)
-				element.draw(camera, currentFrame, this.index, parentMatrix, transform, blend, antialiasing, shader);
+				element.draw(camera, currentFrame, this.index, parentMatrix, transform, blend, element.antialiasing ?? antialiasing, shader);
 		}
 	}
 

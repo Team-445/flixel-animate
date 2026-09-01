@@ -244,7 +244,7 @@ class MovieClipInstance extends SymbolInstance
 	 */
 	inline function getMovieClipIndex():Int
 	{
-		return Math.floor(time * libraryItem.timeline.parent.frameRate * FlxG.timeScale);
+		return Math.floor((FlxG.game.ticks / 1000) * libraryItem.timeline.parent.frameRate * FlxG.timeScale);
 	}
 }
 

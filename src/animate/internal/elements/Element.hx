@@ -7,7 +7,6 @@ import flixel.system.FlxAssets.FlxShader;
 import flixel.util.FlxDestroyUtil;
 import openfl.display.BlendMode;
 import openfl.geom.ColorTransform;
-
 using flixel.util.FlxColorTransformUtil;
 
 typedef Element = AnimateElement<Dynamic>;
@@ -18,6 +17,13 @@ class AnimateElement<T> implements IFlxDestroyable
 	public var visible:Bool;
 	public var elementType(default, null):ElementType;
 	public var parentFrame:Frame;
+
+	public var antialiasing(get, never):Null<Bool>;
+
+	function get_antialiasing():Null<Bool>
+	{
+		return null;
+	}
 
 	var _mat:FlxMatrix;
 
