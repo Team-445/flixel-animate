@@ -20,7 +20,6 @@ import flixel.util.FlxDestroyUtil;
 import haxe.Json;
 import haxe.ds.Vector;
 import haxe.io.Path;
-
 using StringTools;
 
 /**
@@ -392,7 +391,7 @@ class FlxAnimateFrames extends FlxAtlasFrames
 		}
 		catch (e)
 		{
-			FlxG.log.warn('Couldnt load Animation.json with input "$animation". Is the texture atlas missing?');
+			FlxG.log.warn('Couldnt load Animation.json with error "$e". Is the texture atlas missing?');
 			return null;
 		}
 
