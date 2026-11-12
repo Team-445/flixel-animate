@@ -20,6 +20,9 @@ import flixel.util.FlxDestroyUtil;
 import haxe.Json;
 import haxe.ds.Vector;
 import haxe.io.Path;
+#if dde
+import deepend.system.GoodMemory;
+#end
 using StringTools;
 
 /**
@@ -230,6 +233,8 @@ class FlxAnimateFrames extends FlxAtlasFrames
 	public static function fromAnimate(animate:String, ?spritemaps:Array<SpritemapInput>, ?metadata:String, ?key:String, ?unique:Bool = false,
 			?settings:FlxAnimateSettings):FlxAnimateFrames
 	{
+		var atlas:FlxAnimateFrames = null;
+
 		var animkey:String = key ?? animate;
 
 		if (!unique && _cachedAtlases.exists(animkey))
@@ -285,14 +290,27 @@ class FlxAnimateFrames extends FlxAtlasFrames
 			}
 			else
 			{
-				return cachedAtlas;
+				atlas = cachedAtlas;
 			}
 		}
 
-		if (FlxAnimateAssets.exists(animate + "/Animation.json", TEXT))
-			return _fromAnimatePath(animate, key, settings);
+		if (atlas == null)
+		{
+			if (FlxAnimateAssets.exists(animate + "/Animation.json", TEXT))
+				atlas = _fromAnimatePath(animate, key, settings);
+			else
+				atlas = _fromAnimateInput(animate, spritemaps, metadata, key, settings);
+		}
 
-		return _fromAnimateInput(animate, spritemaps, metadata, key, settings);
+		#if dde
+		if (atlas != null)
+		{
+			if (GoodMemory.instance.tracking)
+				GoodMemory.instance.trackedAtlases.push(atlas);
+		}
+		#end
+
+		return atlas;
 	}
 
 	static function getTextFromPath(path:String):Null<String>
